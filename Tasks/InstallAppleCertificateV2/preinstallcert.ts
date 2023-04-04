@@ -3,11 +3,13 @@ import sign = require('azure-pipelines-tasks-ios-signing-common/ios-signing-comm
 import secureFilesCommon = require('azure-pipelines-tasks-securefiles-common/securefiles-common');
 import * as tl from 'azure-pipelines-task-lib/task';
 import os = require('os');
+import * as fs from 'fs/promises';
 
 const retryCount = 8;
 
 async function run() {
-    let secureFileId: string;
+    let secureFile: string;
+    let pfxString: string;
     let secureFileHelpers: secureFilesCommon.SecureFileHelpers;
 
     try {
@@ -19,15 +21,30 @@ async function run() {
         }
 
         // download decrypted contents
-        secureFileId = tl.getInput('certSecureFile', true);
-        
+        secureFile = tl.getInput('certSecureFile');
+        if (!secureFile) pfxString = tl.getInput('pfxString', true);
+
+        let p12Properties;
+        let certPath: string;
+        let certPwd: string;
         secureFileHelpers = new secureFilesCommon.SecureFileHelpers(retryCount);
-        let certPath: string = await secureFileHelpers.downloadSecureFile(secureFileId);
 
-        let certPwd: string = tl.getInput('certPwd');
-
+        if (pfxString) {
+            const decodedString = Buffer.from(secureFile, 'base64').toString('ascii');
+            const fileName = 'decodedCertificate.p12';
+            certPath = secureFileHelpers.getSecureFileTempDownloadPath(fileName);
+            try {
+                await fs.writeFile(certPath, decodedString);
+            } catch (error) {
+                console.log(error);
+            }
+        } else {
+            certPath = await secureFileHelpers.downloadSecureFile(secureFile);
+            certPwd = tl.getInput('certPwd');
+        }
         // get the P12 details - SHA1 hash, common name (CN) and expiration.
-        const p12Properties = await sign.getP12Properties(certPath, certPwd);
+        p12Properties = await sign.getP12Properties(certPath, certPwd);
+
         let commonName: string = p12Properties.commonName;
         const fingerprint: string = p12Properties.fingerprint,
             notBefore: Date = p12Properties.notBefore,
@@ -90,8 +107,8 @@ async function run() {
         tl.setResult(tl.TaskResult.Failed, err);
     } finally {
         // delete certificate from temp location after installing
-        if (secureFileId && secureFileHelpers) {
-            secureFileHelpers.deleteSecureFile(secureFileId);
+        if (secureFile && secureFileHelpers) {
+            secureFileHelpers.deleteSecureFile(secureFile);
         }
     }
 }
