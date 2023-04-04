@@ -38,7 +38,7 @@
             "name": "certSecureFile",
             "type": "secureFile",
             "label": "Certificate (P12)",
-            "defaultValue": "test",
+            "defaultValue": "",
             "required": false,
             "helpMarkDown": "Select the certificate (.p12) that was uploaded to `Secure Files` to install on the macOS agent."
         },
@@ -46,7 +46,7 @@
             "name": "pfxString",
             "type": "string",
             "label": "Pfx certificate in base64 encoding",
-            "defaultValue": "test",
+            "defaultValue": "",
             "required": false,
             "helpMarkDown": "Pfx certificate as a base64 string, e.g. output of Azure Key Vault2"
         },
